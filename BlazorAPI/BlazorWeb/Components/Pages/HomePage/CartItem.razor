@@ -1,0 +1,47 @@
+﻿@page "/cartitem/{productId:int}"
+
+@rendermode InteractiveServer
+@using BlazorWeb.Components.Service
+@using BlazorWeb.Models
+@inject CartService CartService
+@inject CarsService CarsService
+@inject NavigationManager NavManager
+
+<h3>Chi tiết sản phẩm</h3>
+
+@if (Product != null)
+{
+    <div>
+        <h4>@Product.CarModel</h4>
+        <p>Giá: @string.Format("{0:0,0 VNĐ}", Product.Price)</p>
+        <img src="@Product.ImageURL" style="width: 200px;" />
+        <br />
+        @* <button class="btn btn-success" @onclick="AddToCart"> *@
+        @*     🛒 Thêm vào giỏ hàng *@
+        @* </button> *@
+    </div>
+}
+else
+{
+    <p>Đang tải sản phẩm...</p>
+}
+
+@code {
+    [Parameter] public int productId { get; set; }
+    private Car? Product;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Product = await CarsService.GetProductByIdWebAsync(productId);
+    }
+
+    // private void AddToCart()
+    // {
+    //     if (Product != null)
+    //     {
+    //         CartService.AddToCartAsync(Product);
+    //         NavManager.NavigateTo("/order"); 
+    //     }
+    // }
+
+}

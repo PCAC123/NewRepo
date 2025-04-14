@@ -1,0 +1,19 @@
+﻿@page "/barcode"
+@rendermode InteractiveServer
+
+<h3>BarCode</h3>
+
+<input type="text" @bind="code" class="form-control" placeholder="Nhập mã vạch" />
+<img src="@BarcodeUrl" alt="Barcode" />
+<br />
+
+<textarea type="text" @bind="qrcode" class="form-control" placeholder="Nhập QR Code" />
+<img src="@QrCodeUrl" alt="QR Code" />
+
+@code {
+    string code = "aaaaaaaaa";
+    string qrcode = "aaaaaaaaa";
+
+    string BarcodeUrl => $"https://barcode.tec-it.com/barcode.ashx?data={code}&code=Code128&dpi=96";
+    string QrCodeUrl => $"https://barcode.tec-it.com/barcode.ashx?data={qrcode}&code=QRCode&dpi=96";
+}

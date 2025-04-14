@@ -1,0 +1,288 @@
+﻿@page "/products"
+@rendermode InteractiveServer
+@using BlazorWeb.Components.Service
+@using BlazorWeb.Models
+
+
+
+<h3>Danh sách sản phẩm</h3>
+
+<button @onclick="CreateProduct" class="btn btn-success mb-2">Thêm sản phẩm</button>
+
+@if (products == null)
+{
+    <p>Đang tải...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Tên sản phẩm</th>
+                <th>Giá</th>
+                <th>Mô tả</th>
+                <th>Hình ảnh</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var car in products)
+            {
+                <tr>
+                    <td>@car.CarId</td>
+                    <td>@car.ModelId</td>  @* hoặc nếu có navigation property Model, dùng @car.Model.ModelName *@
+                    
+                    <td>@string.Format("{0:0,0 VNĐ}", car.Price)</td>
+                    <td>@car.Year</td>
+                    <td>@car.Color</td>
+                    <td>@car.Status</td>
+                    <td>@car.ManufactureDate??.ToString("dd/MM/yyyy")</td>
+                    <td>@car.Description</td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(car.ImageURL))
+                        {
+                            <img src="@car.ImageURL" alt="Hình xe" width="50" />
+                            <button @onclick="() => ForceDownloadImage(car.ImageURL)" class="btn btn-primary ms-2">
+                                Tải xuống
+                            </button>
+                        }
+                    </td>
+                    <td>
+                        <button @onclick="() => EditProduct(car)" class="btn btn-warning">Sửa</button>
+                        <button @onclick="() => DeleteProduct(car.CarId)" class="btn btn-danger">Xóa</button>
+                    </td>
+                </tr>
+            }
+
+        </tbody>
+    </table>
+}
+
+@if (isEditing)
+{
+    <h3>@(editingProduct.CarId == 0 ? "Thêm xe mới" : "Cập nhật thông tin xe")</h3>
+
+    <div>
+        @* <input type="number" @bind="editingProduct.ModelId" placeholder="ID Mẫu xe" class="form-control mb-2" /> *@
+        
+        <select @bind="editingProduct.ModelId" class="form-control mb-2">
+            <option disabled selected value="0">-- Chọn loại xe (CarStyle) --</option>
+            @foreach (var model in carModel)
+            {
+                <option value="@model.ModelId">@model.ModelName</option>
+            }
+        </select>
+        <input type="number" @bind="editingProduct.Price" placeholder="Giá" class="form-control mb-2" />
+        <input type="number" @bind="editingProduct.Year" placeholder="Năm sản xuất" class="form-control mb-2" />
+        <input type="text" @bind="editingProduct.Color" placeholder="Màu sắc" class="form-control mb-2" />
+        <input type="text" @bind="editingProduct.Status" placeholder="Trạng thái" class="form-control mb-2" />
+        <input type="date" @bind="editingProduct.ManufactureDate" class="form-control mb-2" />
+        <textarea @bind="editingProduct.Description" placeholder="Mô tả" class="form-control mb-2"></textarea>
+
+        <InputFile OnChange="HandleFileSelected" accept="image/*" class="form-control mb-2" />
+
+        @if (!string.IsNullOrEmpty(imagePreviewUrl))
+        {
+            <img src="@imagePreviewUrl" alt="Xem trước hình ảnh" width="200" class="mb-2" />
+        }
+
+        <button @onclick="SaveProduct" class="btn btn-primary">Lưu</button>
+        <button @onclick="CancelEdit" class="btn btn-secondary">Hủy</button>
+    </div>
+}
+
+
+@code {
+    private List<Car> products = new();
+    private List<CarModel> carModel = new();
+    private Car editingProduct = new();
+    private CarModel editingCarModel = new();
+    private bool isEditing = false;
+    private string? imagePreviewUrl;
+    private IBrowserFile? selectedFile;
+    [Inject] private IJSRuntime? JS { get; set; } = default!;
+    [Inject] private CarsService? ProductService { get; set; }
+    [Inject] private CarModelsService? CarModelService { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProducts();
+        
+    }
+
+    private async Task LoadProducts()
+    {
+        if (ProductService == null)
+        {
+            Console.WriteLine("❌ ProductService không được khởi tạo!");
+            return;
+        }
+        products = await ProductService.GetProductsAsync();
+        carModel = await CarModelService!.GetCarModelsAsync();
+    }
+
+    private void CreateProduct()
+    {
+        editingProduct = new Car();
+        isEditing = true;
+    }
+
+    private void EditProduct(Car car)
+    {
+        editingProduct = new Car
+            {
+                CarId = car.CarId,
+                ModelId = car.ModelId,
+                Price = car.Price,
+                Year = car.Year,
+                Color = car.Color,
+                Status = car.Status,
+                ManufactureDate = car.ManufactureDate,
+                Description = car.Description,
+                ImageURL = car.ImageURL
+            };
+        isEditing = true;
+    }
+    private void CancelEdit()
+    {
+        // 🟢 Reset lại model và ảnh preview
+        editingProduct = new Car();
+        //imagePreviewUrl = null;
+        selectedFile = null;
+        isEditing = false;
+    }
+
+    private async Task DeleteProduct(int id)
+    {
+        if (ProductService == null)
+        {
+            Console.WriteLine("❌ ProductService không được khởi tạo!");
+            return;
+        }
+        await ProductService.DeleteProductAsync(id);
+        await JS!.InvokeVoidAsync("alert", "✅ Xóa sản phẩm thành công!");
+        await LoadProducts();
+    }
+    private async Task SaveProduct()
+    {
+        // 🔹 Nếu có file mới, chỉ upload một lần
+        if (selectedFile != null)
+        {
+            editingProduct.ImageURL = await SaveImageFile(selectedFile);
+            selectedFile = null; // Reset file sau khi lưu
+        }
+
+        if (editingProduct.CarId == 0)
+        {
+            if (string.IsNullOrEmpty(editingProduct.ImageURL))
+            {
+                await JS!.InvokeVoidAsync("alert", "❌ Vui lòng chọn hình ảnh!");
+                return;
+            }
+            if (ProductService == null)
+            {
+                Console.WriteLine("❌ ProductService không được khởi tạo!");
+                return;
+            }
+            await ProductService.AddProductAsync(editingProduct);
+            await JS!.InvokeVoidAsync("alert", "✅ Thêm sản phẩm thành công!");
+        }
+        else
+        {
+            if (ProductService == null)
+            {
+                Console.WriteLine("❌ ProductService không được khởi tạo!");
+                return;
+            }
+            await ProductService.UpdateProductAsync(editingProduct);
+            await JS!.InvokeVoidAsync("alert", "✅ Cập nhật sản phẩm thành công!");
+        }
+
+        await LoadProducts();
+
+        // 🟢 Reset lại model và ảnh preview
+        editingProduct = new Car();
+        imagePreviewUrl = null;
+        isEditing = false;
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        if (selectedFile == null) return;
+
+        string[] allowedExtensions = { ".jpg", ".jpeg", ".png", ".gif" };
+        string fileExtension = Path.GetExtension(selectedFile.Name).ToLower();
+
+        if (!allowedExtensions.Contains(fileExtension))
+        {
+            await JS!.InvokeVoidAsync("alert", "❌ Định dạng file không hợp lệ!");
+            return;
+        }
+
+        long maxFileSize = 2 * 1024 * 1024;
+        if (selectedFile.Size > maxFileSize)
+        {
+            await JS!.InvokeVoidAsync("alert", "❌ File quá lớn! Chỉ cho phép tối đa 2MB.");
+            return;
+        }
+
+        // 🟢 Hiển thị ảnh preview ngay lập tức (Base64)
+        using var stream = selectedFile.OpenReadStream();
+        using var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream);
+        byte[] imageBytes = memoryStream.ToArray();
+        string base64String = Convert.ToBase64String(imageBytes);
+        imagePreviewUrl = $"data:{selectedFile.ContentType};base64,{base64String}";
+
+        Console.WriteLine("📷 Ảnh đã chọn, nhưng chưa lưu!");
+    }
+    private async Task<string> SaveImageFile(IBrowserFile file)
+    {
+        var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+
+        if (!Directory.Exists(uploadPath))
+        {
+            Directory.CreateDirectory(uploadPath);
+        }
+
+        // 🟢 Tạo tên file mới bằng GUID
+        string newFileName = $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}";
+        string filePath = Path.Combine(uploadPath, newFileName);
+
+        using var stream = new FileStream(filePath, FileMode.Create);
+        await file.OpenReadStream().CopyToAsync(stream);
+
+        return $"/uploads/{newFileName}"; // Chỉ trả về tên file
+    }
+
+    private async Task ForceDownloadImage(string fileName)
+    {
+        bool confirmDownload = await JS!.InvokeAsync<bool>("confirm", $"Bạn có muốn tải xuống {fileName.Replace("/uploads/", "").Replace("/uploads/", "")} không?");
+        if (!confirmDownload) return;
+        // 🟢 ĐƯỜNG DẪN DOWNLOADS CỦA NGƯỜI DÙNG
+        string userDownloadsFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+
+        // 🟢 Kiểm tra thư mục "Downloads", nếu chưa có thì tạo mới
+        if (!Directory.Exists(userDownloadsFolder))
+        {
+            Directory.CreateDirectory(userDownloadsFolder);
+        }
+
+        // 🟢 ĐƯỜNG DẪN FILE GỐC TRONG "wwwroot/uploads"
+        var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", Path.GetFileName(fileName));
+        
+        if (!File.Exists(sourcePath))
+        {
+            Console.WriteLine("❌ File không tồn tại!");
+            return;
+        }
+
+        // 🟢 Sao chép file sang thư mục "Downloads"
+        string destinationPath = Path.Combine(userDownloadsFolder, Path.GetFileName(fileName));
+        File.Copy(sourcePath, destinationPath, true);
+        await JS!.InvokeVoidAsync("alert", "Tải thành công.");
+        Console.WriteLine($"✅ File đã được tải xuống: {destinationPath}");
+    }
+}

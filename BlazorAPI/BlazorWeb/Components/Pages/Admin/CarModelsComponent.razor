@@ -1,0 +1,134 @@
+﻿@page "/admin/carmodeladmin"
+@rendermode InteractiveServer
+@using BlazorWeb.Models
+@using BlazorWeb.Components.Service
+
+<h3>Quản lý Car Models</h3>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Tên Model</th>
+            <th>Style</th>
+            <th>Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var model in models)
+        {
+            <tr>
+                <td>@model.ModelId</td>
+                <td>@model.ModelName</td>
+                <td>@carStyles.FirstOrDefault(c => c.StyleId == model.StyleId)?.StyleName</td>
+                <td>
+                    <button class="btn btn-warning me-2" @onclick="() => EditModel(model)">Sửa</button>
+                    <button class="btn btn-danger" @onclick="() => DeleteModel(model.ModelId)">Xóa</button>
+                </td>
+            </tr>          
+        }
+    </tbody>
+</table>
+@if (isEditing)
+{
+    <h4>@(editingModel.ModelId == 0 ? "➕ Thêm Model mới" : "✏️ Sửa Model")</h4>
+    <div class="mb-3">
+        <input type="text" @bind="editingModel.ModelName" class="form-control mb-2" placeholder="Tên model" />
+
+        <select @bind="editingModel.StyleId" class="form-control mb-2">
+            <option disabled selected value="0">-- Chọn loại xe (CarStyle) --</option>
+            @foreach (var style in carStyles)
+            {
+                <option value="@style.StyleId">@style.StyleName</option>
+            }
+        </select>
+
+        <button class="btn btn-success me-2" @onclick="SaveModel">Lưu</button>
+        <button class="btn btn-secondary" @onclick="CancelEdit">Hủy</button>
+    </div>
+}
+else
+{
+    <button class="btn btn-primary mb-3" @onclick="CreateModel">➕ Thêm mới</button>
+}
+
+
+
+@code {
+    private List<CarModel> models = new();
+    private List<CarStyle> carStyles = new();
+
+    private CarModel editingModel = new();
+    private bool isEditing = false;
+
+    [Inject] private CarModelsService? CarModelsService { get; set; } = default!;
+    [Inject] private CarStylesService? CarStyleService { get; set; } = default!;
+    [Inject] IJSRuntime JS { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        models = await CarModelsService!.GetCarModelsAsync();
+        carStyles = await CarStyleService!.GetCarStylesAsync();
+    }
+
+    private void CreateModel()
+    {
+        editingModel = new CarModel();
+        isEditing = true;
+    }
+
+    private void EditModel(CarModel model)
+    {
+        editingModel = new CarModel
+            {
+                ModelId = model.ModelId,
+                ModelName = model.ModelName,
+                StyleId = model.StyleId
+            };
+        isEditing = true;
+    }
+
+    private async Task SaveModel()
+    {
+        if (string.IsNullOrWhiteSpace(editingModel.ModelName) || editingModel.StyleId == 0)
+        {
+            await JS.InvokeVoidAsync("alert", "❌ Vui lòng nhập tên và chọn loại xe!");
+            return;
+        }
+
+        if (editingModel.ModelId == 0)
+        {
+            await CarModelsService!.AddCarModelsAsync(editingModel);
+            await JS.InvokeVoidAsync("alert", "✅ Thêm thành công!");
+        }
+        else
+        {
+            await CarModelsService!.UpdateCarModelsAsync(editingModel);
+            await JS.InvokeVoidAsync("alert", "✅ Cập nhật thành công!");
+        }
+
+        
+        await LoadData();
+        isEditing = false;
+        editingModel = new CarModel();
+    }
+
+    private async Task DeleteModel(int id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn xóa?"))
+        {
+            await CarModelsService!.DeleteCarModelsAsync(id);
+            await LoadData();
+        }
+    }
+
+    private void CancelEdit()
+    {
+        editingModel = new();
+        isEditing = false;
+    }
+}

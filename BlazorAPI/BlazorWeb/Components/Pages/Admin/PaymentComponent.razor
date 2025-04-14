@@ -1,0 +1,129 @@
+﻿@page "/paymentadmin"
+@rendermode InteractiveServer
+
+@using BlazorWeb.Components.Service
+@using BlazorWeb.Models
+
+<h3>Quản lý Phương Thức Thanh Toán (Payment Methods)</h3>
+
+@if (payments == null)
+{
+    <p>Đang tải...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Tên phương thức</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in payments)
+            {
+                <tr>
+                    <td>@item.PaymentId</td>
+                    <td>@item.PaymentMethod</td>
+                     <td>@item.PaymentStatus</td>
+                    <td>@item.PaidAt</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" @onclick="() => EditPayment(item)">Sửa</button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => DeletePayment(item.PaymentId)">Xóa</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (isEditing)
+{
+    <h4>@(editingPayment.PaymentId == 0 ? "➕ Thêm phương thức mới" : "✏️ Cập nhật phương thức")</h4>
+    <div class="mb-3">
+        <input class="form-control" @bind="editingPayment.PaymentMethod" placeholder="Tên phương thức thanh toán" />
+    </div>
+    <div class="mb-3">
+        <input class="form-control" @bind="editingPayment.PaymentStatus" placeholder="Trạng thái thanh toán" />
+    </div>
+    <div class="mb-3">
+        <input class="form-control" @bind="editingPayment.PaidAt" placeholder="Ngày thanh toán" />
+    </div>
+    <button class="btn btn-primary" @onclick="SavePayment">Lưu</button>
+    <button class="btn btn-secondary" @onclick="CancelEdit">Hủy</button>
+}
+else
+{
+    <button class="btn btn-success" @onclick="AddNewPayment">+ Thêm mới</button>
+}
+
+@code {
+    private List<Payment> payments = new();
+    private bool isEditing = false;
+    private Payment editingPayment = new();
+
+    [Inject] private PaymentService? PaymentService { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPayments();
+    }
+
+    private async Task LoadPayments()
+    {
+        payments = await PaymentService!.GetPaymentsAsync();
+    }
+
+    private void AddNewPayment()
+    {
+        editingPayment = new Payment();
+        isEditing = true;
+    }
+
+    private void EditPayment(Payment item)
+    {
+        editingPayment = new Payment
+            {
+                PaymentId = item.PaymentId,
+                PaymentMethod = item.PaymentMethod,
+                PaymentStatus = item.PaymentStatus,
+                PaidAt = item.PaidAt
+            };
+        isEditing = true;
+    }
+
+    private async Task SavePayment()
+    {
+        if (editingPayment.PaymentId == 0)
+        {
+            await PaymentService!.AddPaymentAsync(editingPayment);
+        }
+        else
+        {
+            await PaymentService!.UpdatePaymentAsync(editingPayment);
+        }
+
+        await LoadPayments();
+        editingPayment = new();
+        isEditing = false;
+    }
+
+    private async Task DeletePayment(int id)
+    {
+        var confirm = await JS.InvokeAsync<bool>("confirm", $"Bạn có chắc muốn xóa phương thức ID {id}?");
+        if (confirm)
+        {
+            await PaymentService!.DeletePaymentAsync(id);
+            await JS.InvokeVoidAsync("alert", "✅ Xóa thành công!");
+            await LoadPayments();
+        }
+    }
+
+    private void CancelEdit()
+    {
+        isEditing = false;
+        editingPayment = new();
+    }
+}

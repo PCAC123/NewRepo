@@ -1,0 +1,106 @@
+﻿@page "/cart"
+@rendermode InteractiveServer
+@using BlazorWeb.Components.Service
+@using BlazorWeb.Models
+@inject CartService CartService
+@inject PaymentService PaymentService
+@inject PromotionService PromotionService
+@inject NavigationManager NavigationManager
+
+<h3>🛒 Giỏ hàng của bạn</h3>
+
+@if (CartItems == null || !CartItems.Any())
+{
+    <p>Giỏ hàng trống.</p>
+}
+else
+{
+    <ul class="list-group mb-4">
+        @foreach (var item in CartItems)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>Xe:</strong> @item.CarId <br />
+                    <strong>Giá:</strong> @string.Format("{0:0,0 VNĐ}", item.Price) <br />
+                    <strong>Số lượng:</strong> @item.Quantity
+                </div>
+                <button class="btn btn-danger btn-sm" @onclick="() => RemoveFromCart(item.CarId)">❌ Xóa</button>
+            </li>
+        }
+    </ul>
+
+    <p><strong>Tổng tiền:</strong> @string.Format("{0:0,0 VNĐ}", TotalPrice)</p>
+
+    <div class="mb-3">
+        <label>🔻 Chọn phương thức thanh toán:</label>
+        <select class="form-select" @bind="SelectedPaymentId">
+            <option value="">-- Chọn phương thức --</option>
+            @foreach (var payment in Payments)
+            {
+                <option value="@payment.PaymentId">@payment.PaymentMethod</option>
+            }
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label>🎁 Mã khuyến mãi (tuỳ chọn):</label>
+        <input class="form-control" @bind="PromotionCode" placeholder="Nhập mã giảm giá (nếu có)" />
+    </div>
+
+    <button class="btn btn-success" @onclick="SubmitOrder">✅ Thanh toán</button>
+    <button class="btn btn-warning ms-2" @onclick="ClearCart">🗑 Xóa tất cả</button>
+}
+
+@code {
+    private List<CartItemModel> CartItems = new();
+    private decimal TotalPrice = 0;
+    private int? SelectedPaymentId;
+    private string? PromotionCode;
+    private List<Payment> Payments = new();
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+    protected override async Task OnInitializedAsync()
+    {
+        await CartService.LoadCartFromStorageAsync();
+        CartItems = CartService.CartItems;
+        TotalPrice = CartService.GetTotal(userId: 1); // giả định đã đăng nhập
+
+        Payments = await PaymentService.GetPaymentsAsync(); // gọi API lấy danh sách phương thức
+    }
+
+    private async Task RemoveFromCart(int id)
+    {
+        await CartService.RemoveFromCartAsync(id, userId: 1);
+        CartItems = CartService.CartItems;
+        TotalPrice = CartService.GetTotal(1);
+    }
+
+    private async Task ClearCart()
+    {
+        await CartService.ClearCartAsync();
+        CartItems.Clear();
+        TotalPrice = 0;
+    }
+
+    private async Task SubmitOrder()
+    {
+        if (CartItems.Count == 0)
+        {
+            await JS.InvokeVoidAsync("alert", "🛑 Giỏ hàng rỗng!");
+            return;
+        }
+
+        int promotionId = 0;
+
+        if (!string.IsNullOrWhiteSpace(PromotionCode) && int.TryParse(PromotionCode, out int promoId))
+        {
+            var promotion = await PromotionService.GetPromotionByIdAsync(promoId);
+            if (promotion != null)
+            {
+                promotionId = promotion.PromotionId;
+            }
+        }
+
+        NavigationManager.NavigateTo($"/orderconfirmation?paymentId={SelectedPaymentId}&promotionId={promotionId}");
+    }
+
+}

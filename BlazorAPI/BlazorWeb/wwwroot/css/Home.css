@@ -1,0 +1,41 @@
+﻿.hinh-thang-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    margin-top: 50px;
+}
+
+/* Khối trung tâm có bo góc và chỉ viền */
+.hinh-thang-radius {
+    background-color: rgb(82, 77, 71);
+    width: 60%;
+    height: 500px;
+    border: 2px dotted #191a1b; /* viền xanh */
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    /* background-color: transparent; */
+    position: relative;
+    z-index: 2;
+}
+
+/* Tam giác trái chỉ viền phải */
+.triangle-left {
+    border: 2px solid #0f1d27; /* viền xanh */
+    width: 0;
+    height: 0;
+    border-top: 100px solid transparent;
+    border-right: 60px solid #f7fafc;
+    background-color: transparent;
+    margin-top: 0;
+}
+
+/* Tam giác phải chỉ viền trái */
+.triangle-right {
+    border: 2px solid #131414; /* viền xanh */
+    width: 0;
+    height: 0;
+    border-top: 100px solid transparent;
+    border-left: 60px solid #f89e9e29;
+    background-color: transparent;
+    margin-top: 0;
+}

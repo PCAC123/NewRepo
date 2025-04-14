@@ -1,0 +1,70 @@
+﻿@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+<header class="mb-5">
+    <div class="menu mt-1">
+        <ul>
+            <li><NavLink href="/" Match="NavLinkMatch.All">Trang Chủ</NavLink></li>
+            <li><NavLink href="/about">Giới Thiệu</NavLink></li>
+            <li><NavLink href="/services">Dịch Vụ</NavLink></li>
+            <li><NavLink href="/contact">Liên Hệ</NavLink></li>
+            <li class="logo-container">
+                <div class="triangle-frame">
+                    <NavLink href="/">
+                        <img src="/Image/imageslogo.png" alt="Logo" class="logo-img" />
+                    </NavLink>
+                </div>
+            </li>
+        </ul>
+
+        <div class="search-container">
+            <input type="text" placeholder="Tìm kiếm..." />
+            <button type="submit">Tìm</button>
+
+            <ul style="border-radius: 10px; background-color: rgb(106, 24, 24)">
+                @if (isLoggedIn)
+                {
+                    <li><a href="#">👋 Xin chào, @fullName</a></li>
+                    <li><a href="#" @onclick="Logout">Đăng xuất</a></li>
+                }
+                else
+                {
+                    <li><a href="/auth">Đăng nhập</a></li>
+                    <li><a href="/auth">Đăng ký</a></li>
+                }
+            </ul>
+        </div>
+    </div>
+</header>
+
+@code {
+    private string? fullName;
+    private bool isLoggedIn;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await CheckLoginStatusAsync();
+            StateHasChanged(); // cập nhật lại UI sau khi kiểm tra
+        }
+    }
+
+    private async Task CheckLoginStatusAsync()
+    {
+        fullName = await JS.InvokeAsync<string>("localStorage.getItem", "FullName");
+        isLoggedIn = !string.IsNullOrWhiteSpace(fullName);
+    }
+
+    private async Task Logout()
+    {
+        await JS.InvokeVoidAsync("localStorage.removeItem", "UserId");
+        await JS.InvokeVoidAsync("localStorage.removeItem", "FullName");
+        await JS.InvokeVoidAsync("localStorage.removeItem", "UserRole");
+
+        isLoggedIn = false;
+        fullName = string.Empty;
+
+        Navigation.NavigateTo("/", forceLoad: true); // reload lại trang sau logout
+    }
+}

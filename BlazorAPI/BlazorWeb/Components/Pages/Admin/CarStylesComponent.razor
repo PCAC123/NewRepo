@@ -1,0 +1,125 @@
+﻿@page "/carstyleadmin"
+@rendermode InteractiveServer
+
+@using BlazorWeb.Components.Service
+@using BlazorWeb.Models
+
+<h3>Quản lý Kiểu Dáng Xe (Car Styles)</h3>
+
+@if (carStyles == null)
+{
+    <p>Đang tải...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Style ID</th>
+                <th>Tên kiểu</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var style in carStyles)
+            {
+                <tr>
+                    <td>@style.StyleId</td>
+                    <td>@style.StyleName</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" @onclick="() => EditStyle(style)">Sửa</button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => DeleteStyle(style.StyleId)">Xóa</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (isEditing)
+{
+    <h3>@(editingCarStyle.StyleId == 0 ? "➕ Thêm sản phẩm mới" : "✏️ Cập nhật sản phẩm")</h3>
+    <div class="mb-3">
+        <input class="form-control" @bind="editingCarStyle.StyleName" placeholder="Tên kiểu xe" />
+    </div>
+    <button class="btn btn-primary" @onclick="SaveStyle">Lưu</button>
+    <button class="btn btn-secondary" @onclick="CancelEdit">Hủy</button>
+}
+else
+{
+    <button class="btn btn-success" @onclick="AddNewStyle">+ Thêm mới</button>
+}
+
+@code {
+    private List<CarStyle> carStyles = new();
+    private bool isEditing = false;
+    private CarStyle editingCarStyle = new();
+    [Inject] private CarStylesService? CarStylesService { get; set; } = default!;
+    [Inject] IJSRuntime JS { get; set; } = default!;
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStyles();
+    }
+
+    private async Task LoadStyles()
+    {
+        carStyles = await CarStylesService!.GetCarStylesAsync();
+    }
+
+    private void AddNewStyle()
+    {
+        editingCarStyle = new CarStyle();
+        isEditing = true;
+    }
+
+    private void EditStyle(CarStyle style)
+    {
+        editingCarStyle = new CarStyle
+            {
+                StyleId = style.StyleId,
+                StyleName = style.StyleName
+            };
+        isEditing = true;
+    }
+
+    private async Task SaveStyle()
+    {
+        if (editingCarStyle.StyleId == 0)
+        {
+            await CarStylesService!.AddCarStyleAsync(editingCarStyle);
+            
+        }
+        else
+        {
+            await CarStylesService!.UpdateCarStyleAsync(editingCarStyle);
+        }
+        await LoadStyles();
+        // 🟢 Reset lại model và ảnh preview
+        editingCarStyle = new CarStyle();
+        isEditing = false;
+    }
+
+    private async Task DeleteStyle(int id)
+    {
+        var confirm = await JS.InvokeAsync<bool>("confirm", $"Bạn có chắc muốn xóa style ID {id}?");
+        if (confirm)
+        {
+            if (CarStylesService == null)
+            {
+                Console.WriteLine("❌ ProductService không được khởi tạo!");
+                return;
+            }
+            await CarStylesService.DeleteCarStyleAsync(id);
+            await JS.InvokeVoidAsync("alert", "✅ Xóa sản phẩm thành công!");
+            await LoadStyles();
+        }
+    }
+
+    private void CancelEdit()
+    {
+        isEditing = false;
+        editingCarStyle = new();
+    }
+
+    
+}

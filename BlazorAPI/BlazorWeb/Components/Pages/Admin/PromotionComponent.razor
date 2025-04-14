@@ -1,0 +1,188 @@
+﻿@page "/promotionadmin"
+@rendermode InteractiveServer
+
+@using BlazorWeb.Components.Service
+@using BlazorWeb.Models
+
+<h3>Quản lý Khuyến mãi (Promotions)</h3>
+
+@if (promotions == null)
+{
+    <p>Đang tải...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Phần trăm giảm</th>
+                <th>Ngày bắt đầu</th>
+                <th>Ngày kết thúc</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var promo in promotions)
+            {
+                <tr>
+                    <td>@promo.PromotionId</td>
+                    <td>@promo.DiscountPercentage%</td>
+                    <td>@promo.StartDate.ToShortDateString()</td>
+                    <td>@promo.EndDate.ToShortDateString()</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" @onclick="() => EditPromotion(promo)">Sửa</button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => DeletePromotion(promo.PromotionId)">Xóa</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (isEditing)
+{
+    <h4>@(editingPromotion.PromotionId == 0 ? "➕ Thêm khuyến mãi mới" : "✏️ Cập nhật khuyến mãi")</h4>
+
+    <div class="mb-2">
+        <label>Phần trăm giảm (%)</label>
+        <input class="form-control" type="number" step="0.1" @bind="editingPromotion.DiscountPercentage" />
+    </div>
+
+    <div class="mb-2">
+        <label>Ngày bắt đầu</label>
+        <input class="form-control" type="datetime-local" @bind="startDateString" />
+    </div>
+
+    <div class="mb-2">
+        <label>Ngày kết thúc</label>
+        <input class="form-control" type="datetime-local" @bind="endDateString" />
+    </div>
+
+
+    <button class="btn btn-primary" @onclick="SavePromotion">Lưu</button>
+    <button class="btn btn-secondary" @onclick="CancelEdit">Hủy</button>
+}
+else
+{
+    <button class="btn btn-success" @onclick="AddNewPromotion">+ Thêm mới</button>
+}
+
+@code {
+    private List<Promotion> promotions = new();
+    private bool isEditing = false;
+    private Promotion editingPromotion = new();
+    private DateTime startDateString = DateTime.Now;
+    private DateTime endDateString = new();
+
+    [Inject] private PromotionService? PromotionService { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPromotions();
+    }
+
+    private async Task LoadPromotions()
+    {
+        promotions = await PromotionService!.GetPromotionsAsync();
+    }
+
+    private void AddNewPromotion()
+    {
+        editingPromotion = new Promotion
+            {
+                StartDate = DateTime.Today,
+                EndDate = DateTime.Today.AddDays(7)
+            };
+        editingPromotion.StartDate = startDateString;
+        editingPromotion.EndDate = endDateString;
+
+        isEditing = true;
+    }
+
+    private void EditPromotion(Promotion promo)
+    {
+        editingPromotion = new Promotion
+            {
+                PromotionId = promo.PromotionId,
+                DiscountPercentage = promo.DiscountPercentage,
+                StartDate = promo.StartDate,
+                EndDate = promo.EndDate
+            };
+        startDateString = editingPromotion.StartDate;
+        endDateString = editingPromotion.EndDate;
+
+        isEditing = true;
+    }
+
+    private async Task SavePromotion()
+    {
+        if (editingPromotion.DiscountPercentage <= 0)
+        {
+            await JS.InvokeVoidAsync("alert", "❌ Phần trăm giảm phải lớn hơn 0.");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(editingPromotion.DiscountPercentage.ToString()))
+        {
+            await JS.InvokeVoidAsync("alert", "❌ Vui lòng nhập phần trăm giảm.");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(startDateString.ToString()))
+        {
+            await JS.InvokeVoidAsync("alert", "❌ Vui lòng chọn ngày bắt đầu.");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(endDateString.ToString()))
+        {
+            await JS.InvokeVoidAsync("alert", "❌ Vui lòng chọn ngày kết thúc.");
+            return;
+        }
+        if (endDateString < DateTime.Now)
+        {
+            await JS.InvokeVoidAsync("alert", "❌ Ngày kết thúc không được nhỏ hơn ngày hiện tại.");
+            return;
+        }
+
+        if (endDateString < startDateString)
+        {
+            await JS.InvokeVoidAsync("alert", "❌ Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.");
+            return;
+        }
+
+        editingPromotion.StartDate = startDateString;
+        editingPromotion.EndDate = endDateString;
+
+        if (editingPromotion.PromotionId == 0)
+        {
+            await PromotionService!.AddPromotionAsync(editingPromotion);
+        }
+        else
+        {
+            await PromotionService!.UpdatePromotionAsync(editingPromotion);
+        }
+
+        await LoadPromotions();
+        editingPromotion = new();
+        isEditing = false;
+    }
+
+
+
+    private async Task DeletePromotion(int id)
+    {
+        var confirm = await JS.InvokeAsync<bool>("confirm", $"Bạn có chắc muốn xóa khuyến mãi ID {id}?");
+        if (confirm)
+        {
+            await PromotionService!.DeletePromotionAsync(id);
+            await JS.InvokeVoidAsync("alert", "✅ Xóa khuyến mãi thành công!");
+            await LoadPromotions();
+        }
+    }
+
+    private void CancelEdit()
+    {
+        isEditing = false;
+        editingPromotion = new();
+    }
+}

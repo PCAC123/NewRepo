@@ -8,8 +8,6 @@ namespace BlazorWeb.Models
 
         // Khóa ngoại
         public int ModelId { get; set; }
-        
-
         public decimal Price { get; set; } = 0;
         public int Year { get; set; }
         public string Color { get; set; } = string.Empty;

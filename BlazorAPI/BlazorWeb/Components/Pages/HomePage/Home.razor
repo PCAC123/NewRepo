@@ -6,7 +6,8 @@
 @inject NavigationManager NavManager
 
 
-
+<br />
+<br />
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -55,14 +56,28 @@
         }
     </style>
 </head>
-<body class="bg-light">
+
+<body class="bg-light mt-2">
     <!-- Banner -->
-    <div class="banner my-3">
-        <img src="img/banner.jpeg" alt="VinFast Banner">
+    <div id="bannerCarousel" class="carousel slide mt-5" data-bs-ride="carousel" data-bs-interval="3000">
+        <div class="carousel-inner">
+            <div class="carousel-item active">
+                <img src="/Image/banner1.jpg" class="d-block w-100" alt="Banner 1">
+            </div>
+            <div class="carousel-item">
+                <img src="/Image/banner2.jpg" class="d-block w-100" alt="Banner 2">
+            </div>
+
+        </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#bannerCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Previous</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#bannerCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Next</span>
+        </button>
     </div>
-    @* <button @onclick="NavigateToCartItem"> *@
-    @*     Chuyển trang *@
-    @* </button> *@
 
 
     <!-- Product List -->
@@ -84,9 +99,9 @@
 
                     <div class="col-lg-3 col-md-4 col-sm-6">
                         <div class="card shadow-lg h-100">
-                            <h4> type="text" @product.CarId </h4>
-                            <h4 class="card-title text-truncate text-center fw-bold text-dark">@product.CarModel</h4>
-                            <img src="@product.ImageURL" alt="@product.CarModel" class="card-img-top" style="height: 200px; object-fit: cover;">
+                            <h4>@CarModels.FirstOrDefault(x => x.ModelId == product.ModelId)?.ModelName</h4>
+                            
+                            <img src="@product.ImageURL" alt="@product.CarModel" class="card-img-top" loading="lazy" style="height: 200px; object-fit: cover;">
                             <div class="card-body">
                                 <p>
                                     <strong>Giá Từ:</strong>
@@ -119,8 +134,10 @@
 
 @code {
     private List<Car> Model { get; set; } = new List<Car>();
+    private List<CarModel> CarModels { get; set; } = new List<CarModel>();
     [Inject] private IJSRuntime JS { get; set; } = default!;
     [Inject] private CarsService? ProductService { get; set; }
+    [Inject] private CarModelsService? CarModelService { get; set; }
     //private string idCartitem = $"/cartitem/";
     protected override async Task OnInitializedAsync()
     {
@@ -138,7 +155,12 @@
     private async Task LoadProducts()
     {
         Model = await ProductService!.GetProductsAsync();
-       
+        CarModels = await CarModelService!.GetCarModelsAsync();
+
+        // foreach (var car in Model)
+        // {
+        //     car.CarModel = CarModels.FirstOrDefault(m => m.ModelId == car.ModelId);
+        // }
         Console.WriteLine($"Số sản phẩm tải về: {Model.Count}");
     }
 

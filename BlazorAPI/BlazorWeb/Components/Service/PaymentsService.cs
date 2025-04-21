@@ -3,11 +3,11 @@ using System.Net.Http.Json;
 
 namespace BlazorWeb.Components.Service
 {
-    public class PaymentService
+    public class PaymentsService
     {
         private readonly HttpClient _httpClient;
 
-        public PaymentService(IHttpClientFactory httpClientFactory)
+        public PaymentsService(IHttpClientFactory httpClientFactory)
         {
             _httpClient = httpClientFactory.CreateClient("BlazorAPI");
         }

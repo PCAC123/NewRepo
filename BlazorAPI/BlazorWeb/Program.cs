@@ -18,9 +18,12 @@ builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<CarsService>();
 builder.Services.AddScoped<CarStylesService>();
 builder.Services.AddScoped<CarModelsService>();
-builder.Services.AddScoped<PaymentService>();
+builder.Services.AddScoped<PaymentsService>();
 builder.Services.AddScoped<PromotionService>();
 builder.Services.AddScoped<UsersService>();
+builder.Services.AddScoped<OrdersService>();
+builder.Services.AddScoped<OrderDetailsService>();
+builder.Services.AddScoped<ViewsHistoryService>();
 //builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("BlazorAPI"));
 //builder.Services.AddBlazoredLocalStorage();
 

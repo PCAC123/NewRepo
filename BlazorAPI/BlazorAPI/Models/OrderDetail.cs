@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace BlazorAPI.Models
 {
@@ -9,10 +10,14 @@ namespace BlazorAPI.Models
 
         // Khóa ngoại
         public int OrderId { get; set; }
-        public Order Order { get; set; } = default!;
+
+        [JsonIgnore]
+        public Order? Order { get; set; } = default!;
 
         public int CarId { get; set; }
-        public Car Car { get; set; } = default!;
+        [JsonIgnore]
+
+        public Car? Car { get; set; } = default!;
 
         public decimal Price { get; set; }
     }

@@ -1,0 +1,89 @@
+﻿@page "/viewhistorycart"
+
+@using BlazorWeb.Components.Service;
+@using BlazorWeb.Models;
+@inject OrdersService OrdersService
+@inject OrderDetailsService OrderDetailsService
+@inject ViewsHistoryService ViewsHistoryService
+@inject CarsService CarService
+@inject NavigationManager NavManager
+@inject IJSRuntime JS
+
+<br />
+<br />
+
+<h3>View History Cart</h3>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Hình ảnh</th>
+            <th>Tên xe</th>
+            <th>Ngày xem</th>
+            <th>car Id</th>
+            <th>User Id</th>
+            @* <th>Xóa</th> *@
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in ViewHistories)
+        {
+            <tr>
+                <td>
+                    <img src="@item.Car?.ImageURL" alt="Xe" width="100" height="60" />
+                </td>
+                <td>@item.Car?.Description</td>
+                <td>@item.ViewedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                  <td>@item.CarId</td>
+                <td>@item.UserId</td>
+                @* <td> *@
+                @*     <button class="btn btn-danger btn-sm" @onclick="() => RemoveFromHistory(item.ViewId)">❌</button> *@
+                @* </td> *@
+            </tr>
+        }
+    </tbody>
+</table>
+<video controls="controls">
+    <source src="file.mp4" type="video/mp4" />
+    <source src="file.webm" type="video/webm" />
+    <source src="file.ogv" type="video/ogg" />
+</video>
+@code {
+    private List<ViewHistory> ViewHistories { get; set; } = new();
+    private List<Car> ModelCar { get; set; } = new();
+    private int? UserId { get; set; }
+    private bool _isInitialized = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_isInitialized)
+        {
+            var userIdString = await JS.InvokeAsync<string>("localStorage.getItem", "UserId");
+
+            if (!int.TryParse(userIdString, out var uid))
+            {
+                NavManager.NavigateTo("/auth");
+                return;
+            }
+
+            UserId = uid;
+            await LoadViewHistory();
+
+            _isInitialized = true;
+            StateHasChanged(); // cập nhật lại UI
+        }
+    }
+
+    private async Task LoadViewHistory()
+    {
+
+        ViewHistories = await ViewsHistoryService.GetViewHisByIdWebAsync(UserId!.Value);
+        ModelCar = await CarService!.GetProductsAsync();
+    }
+
+    private async Task RemoveFromHistory(int viewId)
+    {
+        await ViewsHistoryService.DeleteViewHistoryAsync(viewId);
+        await LoadViewHistory();
+    }
+}

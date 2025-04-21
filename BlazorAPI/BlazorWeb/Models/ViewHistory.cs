@@ -1,4 +1,6 @@
-﻿namespace BlazorWeb.Models
+﻿using System.Text.Json.Serialization;
+
+namespace BlazorWeb.Models
 {
     public class ViewHistory
     {
@@ -6,10 +8,12 @@
 
         // Khóa ngoại
         public int UserId { get; set; }
-        public User User { get; set; } = default!;
+        [JsonIgnore]
+        public User? User { get; set; } = default!;
 
         public int CarId { get; set; }
-        public Car Car { get; set; } = default!;
+        [JsonIgnore]
+        public Car? Car { get; set; } = default!;
 
         public DateTime ViewedAt { get; set; } = DateTime.Now;
     }

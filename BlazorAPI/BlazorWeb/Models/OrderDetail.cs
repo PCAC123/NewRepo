@@ -1,4 +1,6 @@
-﻿namespace BlazorWeb.Models
+﻿using System.Text.Json.Serialization;
+
+namespace BlazorWeb.Models
 {
     public class OrderDetail
     {
@@ -6,10 +8,11 @@
 
         // Khóa ngoại
         public int OrderId { get; set; }
-        public Order Order { get; set; } = default!;
+        [JsonIgnore]
+        public Order? Order { get; set; } = default!;
 
         public int CarId { get; set; }
-        public Car Car { get; set; } = default!;
+        public Car? Car { get; set; } = default!;
 
         public decimal Price { get; set; }
     }

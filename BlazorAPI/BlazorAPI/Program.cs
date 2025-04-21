@@ -16,6 +16,11 @@ builder.Services.AddScoped<ICarsModelRepository, CarsModelRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IPromotionRepository, PromotionRepository>();
 builder.Services.AddScoped<IUsersRepository,UsersRepository>();
+builder.Services.AddScoped<IOrdersRepository, OrdersRepository>();
+builder.Services.AddScoped<IOrdersRepository, OrdersRepository>();
+builder.Services.AddScoped<IOrderDetailsRepository, OrderDetailsRepository>();
+builder.Services.AddScoped<IViewsHistoryRepository, ViewsHistoryRepository>();
+
 // Add services to the container.
 builder.Services.AddCors(options =>
 {

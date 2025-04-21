@@ -1,62 +1,90 @@
 ﻿using BlazorWeb.Models;
 using Microsoft.JSInterop;
+using System.Text.Json;
 
-namespace BlazorWeb.Components.Service
+public class CartService
 {
-    public class CartService
+    private readonly HttpClient _httpClient;
+    private readonly IJSRuntime _jsRuntime;
+    private const string CartStorageKey = "mycart";
+
+    public CartService(IHttpClientFactory httpClientFactory, IJSRuntime jsRuntime)
     {
-        private readonly IJSRuntime _js;
-        public List<CartItemModel> CartItems { get; private set; } = new();
+        _httpClient = httpClientFactory.CreateClient("BlazorAPI");
+        _jsRuntime = jsRuntime;
+    }
 
-        public CartService(IJSRuntime js)
+    public async Task<List<CartItemModel>> GetCartAsync()
+    {
+        var json = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", CartStorageKey);
+
+        if (string.IsNullOrEmpty(json))
         {
-            _js = js;
+            Console.WriteLine("No data found in localStorage.");
+            return new List<CartItemModel>(); // Nếu không có dữ liệu trong localStorage, trả về danh sách rỗng
         }
 
-        public async Task LoadCartFromStorageAsync()
+        try
         {
-            CartItems = await _js.InvokeAsync<List<CartItemModel>>("cartStorage.getCart");
-        }
+            // Kiểm tra dữ liệu trước khi deserializing
+            Console.WriteLine($"Retrieved data from localStorage: {json}");
 
-        public async Task AddToCartAsync(CartItemModel item)
-        {
-            var existingItem = CartItems.FirstOrDefault(p => p.CarId == item.CarId && p.UserId == item.UserId);
-            if (existingItem != null)
+            var cartItems = JsonSerializer.Deserialize<List<CartItemModel>>(json);
+
+            if (cartItems == null || !cartItems.Any())
             {
-                existingItem.Quantity += item.Quantity;
-            }
-            else
-            {
-                CartItems.Add(item);
+                Console.WriteLine("Deserialized cart is empty.");
             }
 
-            await SaveCartToStorageAsync();
+            return cartItems ?? new List<CartItemModel>(); // Nếu cartItems là null, trả về danh sách rỗng
         }
-
-        public async Task RemoveFromCartAsync(int carId, int userId)
+        catch (Exception ex)
         {
-            var item = CartItems.FirstOrDefault(p => p.CarId == carId && p.UserId == userId);
-            if (item != null)
-            {
-                CartItems.Remove(item);
-                await SaveCartToStorageAsync();
-            }
+            Console.Error.WriteLine($"Error deserializing cart items: {ex.Message}");
+            return new List<CartItemModel>(); // Trả về danh sách rỗng nếu có lỗi
         }
+    }
 
-        public async Task ClearCartAsync()
+
+    public async Task AddToCartAsync(CartItemModel item)
+    {
+        var cartItems = await GetCartAsync();
+
+        var existing = cartItems.FirstOrDefault(c => c.CarId == item.CarId);
+        if (existing != null)
         {
-            CartItems.Clear();
-            await _js.InvokeVoidAsync("cartStorage.clearCart");
+            existing.Quantity += item.Quantity ?? 1;
         }
-
-        public async Task SaveCartToStorageAsync()
+        else
         {
-            await _js.InvokeVoidAsync("cartStorage.saveCart", CartItems);
+            item.Quantity = item.Quantity ?? 1;
+            cartItems.Add(item);
         }
 
-        public decimal GetTotal(int userId) =>
-            CartItems
-                .Where(item => item.UserId == userId)
-                .Sum(item => item.Price * item.Quantity);
+        await SaveCartAsync(cartItems);
+        // Điều hướng đến trang Cart
+    }
+
+
+    public async Task RemoveFromCartAsync(int carId)
+    {
+        var cartItems = await GetCartAsync();
+        var item = cartItems.FirstOrDefault(c => c.CarId == carId);
+        if (item != null)
+        {
+            cartItems.Remove(item);
+            await SaveCartAsync(cartItems);
+        }
+    }
+
+    public async Task ClearCartAsync()
+    {
+        await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", CartStorageKey);
+    }
+
+    private async Task SaveCartAsync(List<CartItemModel> items)
+    {
+        var json = JsonSerializer.Serialize(items);
+        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", CartStorageKey, json);
     }
 }

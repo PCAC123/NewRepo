@@ -1,9 +1,12 @@
-﻿@page "/paymentadmin"
+﻿@page "/admin/paymentadmin"
 @rendermode InteractiveServer
 
 @using BlazorWeb.Components.Service
 @using BlazorWeb.Models
 
+<br />
+<br />
+<br />
 <h3>Quản lý Phương Thức Thanh Toán (Payment Methods)</h3>
 
 @if (payments == null)
@@ -63,7 +66,7 @@ else
     private bool isEditing = false;
     private Payment editingPayment = new();
 
-    [Inject] private PaymentService? PaymentService { get; set; } = default!;
+    [Inject] private PaymentsService? PaymentService { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()

@@ -1,5 +1,4 @@
 ﻿@page "/cartitem/{productId:int}"
-
 @rendermode InteractiveServer
 @using BlazorWeb.Components.Service
 @using BlazorWeb.Models
@@ -7,18 +6,26 @@
 @inject CarsService CarsService
 @inject NavigationManager NavManager
 
-<h3>Chi tiết sản phẩm</h3>
+<br />
+<br />
+<br />
 
 @if (Product != null)
 {
-    <div>
+    <div class="product-detail">
+        <h3>Chi tiết sản phẩm</h3>
         <h4>@Product.CarModel</h4>
+        <p>Loại xe: @Product.Color</p>
         <p>Giá: @string.Format("{0:0,0 VNĐ}", Product.Price)</p>
-        <img src="@Product.ImageURL" style="width: 200px;" />
-        <br />
-        @* <button class="btn btn-success" @onclick="AddToCart"> *@
-        @*     🛒 Thêm vào giỏ hàng *@
-        @* </button> *@
+        <img src="@Product.ImageURL" />
+
+        <div class="mb-3 mt-3">
+            <label for="quantity">Số lượng:</label>
+            <input type="number" id="quantity" class="form-control"
+            @bind="Quantity" min="1" style="max-width: 150px; margin: 0 auto;" />
+        </div>
+
+        <button class="btn-add" @onclick="AddToCart">🛒 Thêm vào giỏ hàng</button>
     </div>
 }
 else
@@ -28,20 +35,59 @@ else
 
 @code {
     [Parameter] public int productId { get; set; }
+    [Inject] private IJSRuntime JS { get; set; } = default!;
     private Car? Product;
+    private int Quantity = 1;
+    private int? UserId; // giả sử có thể null nếu chưa đăng nhập
 
-    protected override async Task OnInitializedAsync()
+    private bool _loaded = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        Product = await CarsService.GetProductByIdWebAsync(productId);
+        if (firstRender && !_loaded)
+        {
+            Product = await CarsService.GetProductByIdWebAsync(productId);
+            await GetUserIdFromLocalStorage();
+            _loaded = true;
+            StateHasChanged(); // cập nhật lại UI sau khi có dữ liệu
+        }
     }
 
-    // private void AddToCart()
-    // {
-    //     if (Product != null)
-    //     {
-    //         CartService.AddToCartAsync(Product);
-    //         NavManager.NavigateTo("/order"); 
-    //     }
-    // }
+    private async Task GetUserIdFromLocalStorage()
+    {
+        var userIdString = await JS.InvokeAsync<string>("localStorage.getItem", "UserId");
+        if (int.TryParse(userIdString, out int parsedUserId))
+        {
+            UserId = parsedUserId;
+        }
+        else
+        {
+            UserId = null;
+            // Optional: NavManager.NavigateTo("/login");
+        }
+    }
 
+    private async Task AddToCart()
+    {
+        if (Product != null && Quantity > 0)
+        {
+            var cartItem = new CartItemModel
+                {
+                    CarId = Product.CarId,
+                    UserId = UserId,
+                    Price = Product.Price,
+                    ModelId = Product.ModelId,
+                    Year = Product.Year,
+                    Color = Product.Color,
+                    Status = Product.Status,
+                    ImageURL = Product.ImageURL,
+                    ManufactureDate = Product.ManufactureDate,
+                    Description = Product.Description,
+                    Quantity = Quantity
+                };
+                
+            await CartService.AddToCartAsync(cartItem);
+            NavManager.NavigateTo("/cart", forceLoad:true);
+        }
+    }
 }

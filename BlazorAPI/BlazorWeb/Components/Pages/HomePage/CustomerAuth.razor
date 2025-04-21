@@ -16,7 +16,7 @@
 }
 
 
-<div class="form-group">
+<div class="form-group mt-5">
     <input class="form-control mb-2" placeholder="Email" @bind="email" />
     <input class="form-control mb-2" type="password" placeholder="Mật khẩu" @bind="password" />
 
@@ -98,7 +98,13 @@
 
             message = "✅ Đăng nhập thành công.";
             // Thêm dòng này
+            if(user.Role == "Customer")
             Navigation.NavigateTo("/", forceLoad: true);
+            else
+            {
+                // Nếu là admin thì điều hướng đến trang quản trị
+                Navigation.NavigateTo("/products", forceLoad: true);
+            }
         }
     }
     private void ToggleMode()

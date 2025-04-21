@@ -1,10 +1,12 @@
-﻿@page "/products"
+﻿@page "/admin/products"
 @rendermode InteractiveServer
 @using BlazorWeb.Components.Service
 @using BlazorWeb.Models
 
 
-
+<br />
+<br />
+<br />
 <h3>Danh sách sản phẩm</h3>
 
 <button @onclick="CreateProduct" class="btn btn-success mb-2">Thêm sản phẩm</button>
@@ -21,6 +23,10 @@ else
                 <th>ID</th>
                 <th>Tên sản phẩm</th>
                 <th>Giá</th>
+                <th>Năm sản xuất</th>
+                <th>Màu sắc</th>
+                <th>Trạng thái</th>
+                <th>Ngày sản xuất</th>
                 <th>Mô tả</th>
                 <th>Hình ảnh</th>
                 <th>Hành động</th>
